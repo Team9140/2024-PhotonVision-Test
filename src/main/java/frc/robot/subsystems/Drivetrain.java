@@ -7,9 +7,12 @@ import com.revrobotics.CANSparkMax;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
@@ -18,12 +21,14 @@ import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.math.trajectory.constraint.DifferentialDriveVoltageConstraint;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RamseteCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
+import org.photonvision.targeting.PhotonPipelineResult;
 
 import java.util.List;
 
@@ -45,6 +50,7 @@ public class Drivetrain extends SubsystemBase {
   private SimpleMotorFeedforward avg_feedforward;
 
   private DifferentialDriveOdometry odometry;
+  private DifferentialDrivePoseEstimator poseEstimator;
 
   private Arm arm = Arm.getInstance();
 
@@ -87,6 +93,9 @@ public class Drivetrain extends SubsystemBase {
 
     this.odometry = new DifferentialDriveOdometry(this.getYawRotation2D(), this.left.getEncoder().getPosition(),
         this.right.getEncoder().getPosition(), new Pose2d(0.0, 0.0, new Rotation2d(0.0)));
+
+    poseEstimator = new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), this.left.getEncoder().getPosition(),
+            this.right.getEncoder().getPosition(), new Pose2d(Units.inchesToMeters(1), Units.inchesToMeters(1), new Rotation2d(270)));
   }
 
   public static Drivetrain getInstance() {
@@ -202,7 +211,19 @@ public class Drivetrain extends SubsystemBase {
     this.odometry.update(this.getYawRotation2D(), this.left.getEncoder().getPosition(),
         this.right.getEncoder().getPosition());
 
+
+    this.updateVisionMeasurement();
+    this.poseEstimator.update(
+            Rotation2d.fromDegrees(gyro.getAngle()),
+            this.left.getEncoder().getPosition(), this.right.getEncoder().getPosition()
+    );
+
     SmartDashboard.putString("Odometry", this.odometry.getPoseMeters().toString());
+    SmartDashboard.putString("PoseEstimator", this.poseEstimator.toString());
+  }
+
+  public Pose2d getPosition(){
+    return this.poseEstimator.getEstimatedPosition();
   }
 
   public DifferentialDriveWheelSpeeds getWheelSpeeds() {
@@ -334,5 +355,15 @@ public class Drivetrain extends SubsystemBase {
 
   public static void scheduleSequence(Command... commands) {
     new SequentialCommandGroup(commands).schedule();
+  }
+
+  private void updateVisionMeasurement(){
+    PhotonPipelineResult result = PhotonVision.getInstance().getLatestResult();
+    if(result.hasTargets()){
+      double imageCaptureTime = result.getTimestampSeconds();
+      Transform3d cameraToTargetTransform = result.getBestTarget().getBestCameraToTarget();
+      Pose3d cameraPose = Constants.Camera.field.getTagPose(result.getBestTarget().getFiducialId()).get().transformBy(cameraToTargetTransform.inverse());
+      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), imageCaptureTime);
+    }
   }
 }

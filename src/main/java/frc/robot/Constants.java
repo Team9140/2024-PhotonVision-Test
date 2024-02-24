@@ -5,18 +5,13 @@
 
 package frc.robot;
 
-import com.ctre.phoenix.sensors.PigeonIMU;
-import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.DriverStation;
-
-import java.io.IOException;
-import java.util.Optional;
+import edu.wpi.first.wpilibj.Preferences;
 
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide
@@ -180,7 +175,8 @@ public final class Constants {
     public static final class Camera {
         //public static final double CAMERA_HEIGHT_METERS = Units.inchesToMeters(16);
         //public static final double CAMERA_PITCH_RADS = Units.degreesToRadians(45);
-        public static final Transform3d cameraToRobot = new Transform3d();
+        public static final Transform3d cameraToRobot = new Transform3d(new Translation3d(edu.wpi.first.math.util.Units.inchesToMeters(4),
+                edu.wpi.first.math.util.Units.inchesToMeters(7.5), edu.wpi.first.math.util.Units.inchesToMeters(24.5)), new Rotation3d(0, 45, 0));
         public static final AprilTagFieldLayout field = AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
     }
 
