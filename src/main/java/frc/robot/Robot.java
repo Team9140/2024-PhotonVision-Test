@@ -31,8 +31,8 @@ public class Robot extends TimedRobot {
     private PhotonVision vision;
 
     CommandXboxController xb = new CommandXboxController(Constants.Ports.CONTROLLER);
-    // Joystick joyleft = new Joystick(Constants.Ports.JOYLEFT);
-    // Joystick joyright = new Joystick(Constants.Ports.JOYRIGHT);
+     Joystick joyleft = new Joystick(Constants.Ports.JOYLEFT);
+     Joystick joyright = new Joystick(Constants.Ports.JOYRIGHT);
 
     SendableChooser<Integer> autoChooser = new SendableChooser<>();
 
@@ -47,6 +47,7 @@ public class Robot extends TimedRobot {
         this.arm = Arm.getInstance();
         this.drive = Drivetrain.getInstance();
         this.intake = Intake.getInstance();
+        this.vision = PhotonVision.getInstance();
 
         xb.rightBumper().onTrue(this.intake.intakeCone()).onFalse(this.intake.holdCone());
         xb.leftBumper().onTrue(this.intake.intakeCube()).onFalse(this.intake.holdCube());
@@ -60,7 +61,7 @@ public class Robot extends TimedRobot {
         // xb.start().onTrue(this.arm.setRadiansAndFinish(0.0).andThen(this.arm.setRadiansAndFinish(1.0)));
 
         drive.setDefaultCommand(Commands.run(() -> {
-            drive.curvatureDrive(-xb.getLeftY(), -xb.getRightX(), xb.getLeftTriggerAxis() > 0.5);
+            drive.curvatureDrive(-xb.getHID().getLeftY(), -xb.getHID().getRightX(), xb.getHID().getLeftTriggerAxis() > 0.5);
         }, drive));
 
         this.addAutoChoice("Sequence", "High Cube & Balance", 4, true);
@@ -213,7 +214,6 @@ public class Robot extends TimedRobot {
     @Override
     public void teleopInit() {
         Constants.UpdateSettings();
-        this.vision = PhotonVision.getInstance();
     }
 
     private void addAutoChoice(String l, String t, int i, boolean d) {

@@ -175,8 +175,8 @@ public final class Constants {
     public static final class Camera {
         //public static final double CAMERA_HEIGHT_METERS = Units.inchesToMeters(16);
         //public static final double CAMERA_PITCH_RADS = Units.degreesToRadians(45);
-        public static final Transform3d cameraToRobot = new Transform3d(new Translation3d(edu.wpi.first.math.util.Units.inchesToMeters(4),
-                edu.wpi.first.math.util.Units.inchesToMeters(7.5), edu.wpi.first.math.util.Units.inchesToMeters(24.5)), new Rotation3d(0, 45, 0));
+        public static final Transform3d cameraToRobot = new Transform3d(new Translation3d(edu.wpi.first.math.util.Units.inchesToMeters(0),
+                edu.wpi.first.math.util.Units.inchesToMeters(0), edu.wpi.first.math.util.Units.inchesToMeters(0)), new Rotation3d(0, 0, 0));
         public static final AprilTagFieldLayout field = AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
     }
 

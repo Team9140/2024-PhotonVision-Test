@@ -35,7 +35,7 @@ public class PhotonVision extends SubsystemBase {
         this.camera = new PhotonCamera(Constants.Ports.CAMERA);
         photonPose = new PhotonPoseEstimator(
                 Constants.Camera.field,
-                PhotonPoseEstimator.PoseStrategy.AVERAGE_BEST_TARGETS,
+                PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
                 camera,
                 Constants.Camera.cameraToRobot
         );
@@ -47,8 +47,10 @@ public class PhotonVision extends SubsystemBase {
     @Override
     public void periodic() {
         SmartDashboard.putString("Camera junk: ", camera.getLatestResult().getTargets().toString());
+        SmartDashboard.putString("Camera Results", "X: " + Drivetrain.getInstance().getPosition().getX() + " Y: " + Drivetrain.getInstance().getPosition().getY());
         Optional<EstimatedRobotPose> pose = getRobotPose();
-        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Camera Results", "X: " + Drivetrain.getInstance().getPosition().getX() + " Y: " + Drivetrain.getInstance().getPosition().getY()));
+        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Pose", estimatedRobotPose.estimatedPose.toString()));
+
     }
 
     /**
@@ -146,7 +148,6 @@ public class PhotonVision extends SubsystemBase {
     }
 
     public PhotonPipelineResult getLatestResult(){
-        Drivetrain.getInstance().getPosition();
         return camera.getLatestResult();
     }
 }

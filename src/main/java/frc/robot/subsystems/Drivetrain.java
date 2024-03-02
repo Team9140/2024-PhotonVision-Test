@@ -22,6 +22,7 @@ import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.math.trajectory.constraint.DifferentialDriveVoltageConstraint;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RamseteCommand;
@@ -95,12 +96,11 @@ public class Drivetrain extends SubsystemBase {
         this.right.getEncoder().getPosition(), new Pose2d(0.0, 0.0, new Rotation2d(0.0)));
 
     poseEstimator = new DifferentialDrivePoseEstimator(kinematics, gyro.getRotation2d(), this.left.getEncoder().getPosition(),
-            this.right.getEncoder().getPosition(), new Pose2d(Units.inchesToMeters(1), Units.inchesToMeters(1), new Rotation2d(270)));
+            this.right.getEncoder().getPosition(), new Pose2d(Units.inchesToMeters(108), Units.inchesToMeters(192), new Rotation2d(180)));
   }
 
   public static Drivetrain getInstance() {
-    return Drivetrain.instance == null
-        ? Drivetrain.instance = new Drivetrain()
+    return Drivetrain.instance == null        ? Drivetrain.instance = new Drivetrain()
         : Drivetrain.instance;
   }
 
@@ -341,17 +341,17 @@ public class Drivetrain extends SubsystemBase {
     return new Pose2d(x, y, new Rotation2d(a));
   }
 
-  // public CommandBase turnInPlace(double angle) {
-  // // Relative angles, not absolute angles.
-  // double turn = (angle > 90 ? 1 : angle < -90 ? -1 : Math.sin(angle)) *
-  // Constants.Drivetrain.WHEEL_TURN_GAIN * 0.25;
-  //
-  // double initial_yaw = this.getYaw();
-  // return run(() -> this.setOpenLoopWheelSpeed(kinematics.toWheelSpeeds(new
-  // ChassisSpeeds(0.0, 0.0, turn))))
-  // .until(() -> Math.abs(this.getYawDegrees() - initial_yaw) >=
-  // Math.abs(angle));
-  // }
+//   public CommandBase turnInPlace(double angle) {
+//   // Relative angles, not absolute angles.
+//   double turn = (angle > 90 ? 1 : angle < -90 ? -1 : Math.sin(angle)) *
+//   Constants.Drivetrain.WHEEL_TURN_GAIN * 0.25;
+//
+//   double initial_yaw = this.getYaw();
+//   return run(() -> this.setOpenLoopWheelSpeed(kinematics.toWheelSpeeds(new
+//   ChassisSpeeds(0.0, 0.0, turn))))
+//   .until(() -> Math.abs(this.getYawDegrees() - initial_yaw) >=
+//   Math.abs(angle));
+//   }
 
   public static void scheduleSequence(Command... commands) {
     new SequentialCommandGroup(commands).schedule();
@@ -360,10 +360,11 @@ public class Drivetrain extends SubsystemBase {
   private void updateVisionMeasurement(){
     PhotonPipelineResult result = PhotonVision.getInstance().getLatestResult();
     if(result.hasTargets()){
-      double imageCaptureTime = result.getTimestampSeconds();
+      double imageCaptureTime = result.getTimestampSeconds() * 1000000;
       Transform3d cameraToTargetTransform = result.getBestTarget().getBestCameraToTarget();
       Pose3d cameraPose = Constants.Camera.field.getTagPose(result.getBestTarget().getFiducialId()).get().transformBy(cameraToTargetTransform.inverse());
       poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), imageCaptureTime);
+//      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), Timer.getFPGATimestamp());
     }
   }
 }
