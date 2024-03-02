@@ -6,6 +6,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.Unit;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -87,16 +88,25 @@ public class PhotonVision extends SubsystemBase {
     public Pose2d getClosestScoringPoint() {
         double xPoint = 0;
         double yPoint = 0;
-        switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-            // Math will change when angleRelativeToGoal is finished
-            case Blue:
-                xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) - 1.5;
-                yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + 218.42;
-            case Red:
-                xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) + 652.73;
-                yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + 218.42;
+        Optional<EstimatedRobotPose> pose = getRobotPose();
+        Rotation2d currentRotation = null;
+        if (pose.isPresent()) {
+            currentRotation = pose.get().estimatedPose.getRotation().toRotation2d();
+            if (distanceFromGoal(pose.get().estimatedPose.toPose2d()) <= Constants.cameraRange) {
+                return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
+                    // Math will change when angleRelativeToGoal is finished
+                    case Blue:
+                        xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) - Units.inchesToMeters(1.5);
+                        yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + Units.inchesToMeters(218.42);
+                        yield new Pose2d(xPoint, yPoint, currentRotation);
+                    case Red:
+                        xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) + Units.inchesToMeters(652.73);
+                        yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + Units.inchesToMeters(218.42);
+                        yield new Pose2d(xPoint, yPoint, currentRotation);
+                };
+            }
         }
-        return new Pose2d(Units.inchesToMeters(xPoint), Units.inchesToMeters(yPoint), Drivetrain.getInstance().getPosition().getRotation());
+        return null;
     }
 
     /**
@@ -107,24 +117,31 @@ public class PhotonVision extends SubsystemBase {
      **/
     public double angleRelativeToGoal() {
         return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-            case Red -> Math.PI - Math.asin((Drivetrain.getInstance().getPosition().getY() - 218.42) / Math.sqrt(
-                    Math.pow(Drivetrain.getInstance().getPosition().getY() - 218.42, 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() - 652.73, 2)
+            case Red -> Math.PI - Math.asin((Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+                    Math.pow(Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42), 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() - Units.inchesToMeters(652.73), 2)
             ));
-            case Blue -> Math.asin((Drivetrain.getInstance().getPosition().getY() - 218.42) / Math.sqrt(
-                    Math.pow(Drivetrain.getInstance().getPosition().getY() - 218.42, 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() + 1.5, 2)
-            )) + (2 * Math.PI);
+            case Blue -> (2 * Math.PI) + Math.asin((Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+                    Math.pow(Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42), 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() + Units.inchesToMeters(1.5), 2)
+            ));
         };
     }
 
     /**
      * Returns the angle that the robot needs to be facing to be lined up with the goal
      */
-    public double angleToScore() {
-        return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-            case Red -> angleRelativeToGoal() - Math.PI;
-
-            case Blue -> angleRelativeToGoal() + Math.PI;
+    public Rotation2d angleToScore() {
+        Optional<EstimatedRobotPose> pose = getRobotPose();
+        if(pose.isPresent()) {
+            switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
+                case Red -> {
+                    return new Rotation2d(pose.get().estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal() - Math.PI));
+                }
+                case Blue -> {
+                    return new Rotation2d(pose.get().estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal() + Math.PI));
+                }
+            };
         };
+        return null;
     }
 
     /**
@@ -136,15 +153,16 @@ public class PhotonVision extends SubsystemBase {
         // If in scoring range assuming that the range has a radius
         if (distanceFromGoal(Drivetrain.getInstance().getPosition()) <= Constants.scoringRange) {
             // Return Transform2d staying in same place and just rotating to line up with goal
-            return new Transform2d(new Translation2d(), Drivetrain.getInstance().getPosition().getRotation());
-        } else {
+            return new Transform2d(new Translation2d(), angleToScore());
+        } else if (distanceFromGoal(Drivetrain.getInstance().getPosition()) <= Constants.cameraRange) {
             // Hopefully returns a Transform2d that tells robot where to go and how much to rotate by
             return new Transform2d(
                     new Translation2d(Math.abs(getClosestScoringPoint().getX() - Drivetrain.getInstance().getPosition().getX()),
                             Math.abs(getClosestScoringPoint().getY() - Drivetrain.getInstance().getPosition().getY())),
-                    Drivetrain.getInstance().getPosition().getRotation()
+                    angleToScore()
             );
         }
+        return null;
     }
 
     public PhotonPipelineResult getLatestResult(){

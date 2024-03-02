@@ -180,7 +180,10 @@ public final class Constants {
         public static final AprilTagFieldLayout field = AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
     }
 
-    public static final double scoringRange = 120.0;
+
+    //both in meters
+    public static final double scoringRange = 3.0;
+    public static final double cameraRange = 3.5;
 
 
 
