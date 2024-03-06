@@ -51,6 +51,12 @@ public class PhotonVision extends SubsystemBase {
         SmartDashboard.putString("Camera Results", "X: " + Drivetrain.getInstance().getPosition().getX() + " Y: " + Drivetrain.getInstance().getPosition().getY());
         Optional<EstimatedRobotPose> pose = getRobotPose();
         pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Pose", estimatedRobotPose.estimatedPose.toString()));
+        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Distance: ", "" + distanceFromGoal(estimatedRobotPose.estimatedPose.toPose2d())));
+        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Closest point: ", getClosestScoringPoint(estimatedRobotPose).toString()));
+//        SmartDashboard.putString("Relative angle: ", "" + angleRelativeToGoal());
+//        SmartDashboard.putString("Score angle: ", angleToScore().toString());
+//        SmartDashboard.putString("Get to score: ", getToScoringPosition().toString());
+
 
     }
 
@@ -67,7 +73,7 @@ public class PhotonVision extends SubsystemBase {
      * @return The distance from a goal
      **/
     public double distanceFromGoal(Pose2d pose){
-        return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
+        return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
             case Red -> {
                 Transform2d transRed = new Transform2d(Constants.Camera.field.getTagPose(7).get().toPose2d(), pose);
                 yield Math.sqrt(Math.pow(transRed.getX(), 2) + Math.pow(transRed.getY(), 2));
@@ -85,28 +91,24 @@ public class PhotonVision extends SubsystemBase {
      *
      * In inches rn will change to meters later
      **/
-    public Pose2d getClosestScoringPoint() {
+    public Pose2d getClosestScoringPoint(EstimatedRobotPose pose) {
         double xPoint = 0;
         double yPoint = 0;
-        Optional<EstimatedRobotPose> pose = getRobotPose();
-        Rotation2d currentRotation = null;
-        if (pose.isPresent()) {
-            currentRotation = pose.get().estimatedPose.getRotation().toRotation2d();
-            if (distanceFromGoal(pose.get().estimatedPose.toPose2d()) <= Constants.cameraRange) {
-                return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-                    // Math will change when angleRelativeToGoal is finished
-                    case Blue:
-                        xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) - Units.inchesToMeters(1.5);
-                        yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + Units.inchesToMeters(218.42);
-                        yield new Pose2d(xPoint, yPoint, currentRotation);
-                    case Red:
-                        xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal()) + Units.inchesToMeters(652.73);
-                        yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal()) + Units.inchesToMeters(218.42);
-                        yield new Pose2d(xPoint, yPoint, currentRotation);
-                };
-            }
+        Rotation2d currentRotation = pose.estimatedPose.getRotation().toRotation2d();
+        if (distanceFromGoal(pose.estimatedPose.toPose2d()) <= Constants.cameraRange) {
+            return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
+                // Math will change when angleRelativeToGoal is finished
+                case Blue:
+                    xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal(pose)) - Units.inchesToMeters(1.5);
+                    yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal(pose)) + Units.inchesToMeters(218.42);
+                    yield new Pose2d(xPoint, yPoint, currentRotation);
+                case Red:
+                    xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal(pose)) + Units.inchesToMeters(652.73);
+                    yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal(pose)) + Units.inchesToMeters(218.42);
+                    yield new Pose2d(xPoint, yPoint, currentRotation);
+            };
         }
-        return null;
+        return new Pose2d();
     }
 
     /**
@@ -115,13 +117,13 @@ public class PhotonVision extends SubsystemBase {
      *
      * In inches change to meters later
      **/
-    public double angleRelativeToGoal() {
+    public double angleRelativeToGoal(EstimatedRobotPose pose) {
         return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-            case Red -> Math.PI - Math.asin((Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
-                    Math.pow(Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42), 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() - Units.inchesToMeters(652.73), 2)
+            case Red -> Math.PI - Math.asin((pose.estimatedPose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+                    Math.pow(pose.estimatedPose.getY() - Units.inchesToMeters(218.42), 2) + Math.pow(pose.estimatedPose.getX() - Units.inchesToMeters(652.73), 2)
             ));
-            case Blue -> (2 * Math.PI) + Math.asin((Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
-                    Math.pow(Drivetrain.getInstance().getPosition().getY() - Units.inchesToMeters(218.42), 2) + Math.pow(Drivetrain.getInstance().getPosition().getX() + Units.inchesToMeters(1.5), 2)
+            case Blue -> (2 * Math.PI) + Math.asin((pose.estimatedPose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+                    Math.pow(pose.estimatedPose.getY() - Units.inchesToMeters(218.42), 2) + Math.pow(pose.estimatedPose.getX() + Units.inchesToMeters(1.5), 2)
             ));
         };
     }
@@ -129,18 +131,15 @@ public class PhotonVision extends SubsystemBase {
     /**
      * Returns the angle that the robot needs to be facing to be lined up with the goal
      */
-    public Rotation2d angleToScore() {
-        Optional<EstimatedRobotPose> pose = getRobotPose();
-        if(pose.isPresent()) {
-            switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
+    public Rotation2d angleToScore(EstimatedRobotPose pose) {
+            switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
                 case Red -> {
-                    return new Rotation2d(pose.get().estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal() - Math.PI));
+                    return new Rotation2d(pose.estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal(pose) - Math.PI));
                 }
                 case Blue -> {
-                    return new Rotation2d(pose.get().estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal() + Math.PI));
+                    return new Rotation2d(pose.estimatedPose.getRotation().toRotation2d().getRadians() - (angleRelativeToGoal(pose) + Math.PI));
                 }
             };
-        };
         return null;
     }
 
@@ -149,17 +148,17 @@ public class PhotonVision extends SubsystemBase {
      * Can be adjusted to be in certain scoring spots rather than FIXME: unclear
      * @return The Transform2d object
      **/
-    public Transform2d getToScoringPosition() {
+    public Transform2d getToScoringPosition(EstimatedRobotPose pose) {
         // If in scoring range assuming that the range has a radius
-        if (distanceFromGoal(Drivetrain.getInstance().getPosition()) <= Constants.scoringRange) {
+        if (distanceFromGoal(pose.estimatedPose.toPose2d()) <= Constants.scoringRange) {
             // Return Transform2d staying in same place and just rotating to line up with goal
-            return new Transform2d(new Translation2d(), angleToScore());
+            return new Transform2d(new Translation2d(), angleToScore(pose));
         } else if (distanceFromGoal(Drivetrain.getInstance().getPosition()) <= Constants.cameraRange) {
             // Hopefully returns a Transform2d that tells robot where to go and how much to rotate by
             return new Transform2d(
-                    new Translation2d(Math.abs(getClosestScoringPoint().getX() - Drivetrain.getInstance().getPosition().getX()),
-                            Math.abs(getClosestScoringPoint().getY() - Drivetrain.getInstance().getPosition().getY())),
-                    angleToScore()
+                    new Translation2d(Math.abs(getClosestScoringPoint(pose).getX() - pose.estimatedPose.getX()),
+                            Math.abs(getClosestScoringPoint(pose).getY() - pose.estimatedPose.getY())),
+                    angleToScore(pose)
             );
         }
         return null;
