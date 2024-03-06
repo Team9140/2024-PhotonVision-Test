@@ -97,7 +97,7 @@ public class PhotonVision extends SubsystemBase {
         Rotation2d currentRotation = pose.estimatedPose.getRotation().toRotation2d();
         if (distanceFromGoal(pose.estimatedPose.toPose2d()) <= Constants.cameraRange) {
             return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
-                // Math will change when angleRelativeToGoal is finished
+                // Math will change when angleRelativeToGoal is finished, change
                 case Blue:
                     xPoint = Constants.scoringRange * Math.cos(angleRelativeToGoal(pose)) - Units.inchesToMeters(1.5);
                     yPoint = Constants.scoringRange * Math.sin(angleRelativeToGoal(pose)) + Units.inchesToMeters(218.42);
