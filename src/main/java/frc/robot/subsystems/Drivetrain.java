@@ -212,14 +212,14 @@ public class Drivetrain extends SubsystemBase {
         this.right.getEncoder().getPosition());
 
 
-    this.updateVisionMeasurement();
+    //this.updateVisionMeasurement();
     this.poseEstimator.update(
             Rotation2d.fromDegrees(gyro.getAngle()),
             this.left.getEncoder().getPosition(), this.right.getEncoder().getPosition()
     );
 
     SmartDashboard.putString("Odometry", this.odometry.getPoseMeters().toString());
-    SmartDashboard.putString("PoseEstimator", this.poseEstimator.toString());
+    SmartDashboard.putString("PoseEstimator", this.poseEstimator.getEstimatedPosition().toString());
   }
 
   public Pose2d getPosition(){
@@ -357,14 +357,14 @@ public class Drivetrain extends SubsystemBase {
     new SequentialCommandGroup(commands).schedule();
   }
 
-  private void updateVisionMeasurement(){
-    PhotonPipelineResult result = PhotonVision.getInstance().getLatestResult();
-    if(result.hasTargets()){
-      double imageCaptureTime = result.getTimestampSeconds() * 1000000;
-      Transform3d cameraToTargetTransform = result.getBestTarget().getBestCameraToTarget();
-      Pose3d cameraPose = Constants.Camera.field.getTagPose(result.getBestTarget().getFiducialId()).get().transformBy(cameraToTargetTransform.inverse());
-      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), imageCaptureTime);
-//      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), Timer.getFPGATimestamp());
-    }
-  }
+//  private void updateVisionMeasurement(){
+//    PhotonPipelineResult result = PhotonVision.getInstance().getLatestResult();
+//    if(result.hasTargets()){
+//      double imageCaptureTime = result.getTimestampSeconds() * 1000000;
+//      Transform3d cameraToTargetTransform = result.getBestTarget().getBestCameraToTarget();
+//      Pose3d cameraPose = Constants.Camera.field.getTagPose(result.getBestTarget().getFiducialId()).get().transformBy(cameraToTargetTransform.inverse());
+//      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), imageCaptureTime);
+////      poseEstimator.addVisionMeasurement(cameraPose.transformBy(Constants.Camera.cameraToRobot).toPose2d(), Timer.getFPGATimestamp());
+//    }
+//  }
 }

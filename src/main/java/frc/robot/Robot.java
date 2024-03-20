@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -19,7 +20,6 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.subsystems.Arm;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.PhotonVision;
 
 import java.util.List;
 
@@ -28,7 +28,7 @@ public class Robot extends TimedRobot {
     private Drivetrain drive;
     private Intake intake;
 
-    private PhotonVision vision;
+    //private PhotonVision vision;
 
     CommandXboxController xb = new CommandXboxController(Constants.Ports.CONTROLLER);
      Joystick joyleft = new Joystick(Constants.Ports.JOYLEFT);
@@ -47,7 +47,7 @@ public class Robot extends TimedRobot {
         this.arm = Arm.getInstance();
         this.drive = Drivetrain.getInstance();
         this.intake = Intake.getInstance();
-        this.vision = PhotonVision.getInstance();
+        //this.vision = PhotonVision.getInstance();
 
         xb.rightBumper().onTrue(this.intake.intakeCone()).onFalse(this.intake.holdCone());
         xb.leftBumper().onTrue(this.intake.intakeCube()).onFalse(this.intake.holdCube());
