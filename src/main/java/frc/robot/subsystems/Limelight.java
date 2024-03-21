@@ -32,14 +32,15 @@ public class Limelight extends SubsystemBase {
     public void periodic() {
         SmartDashboard.putString("Camera junk: ", LimelightHelpers.getBotPose2d_wpiBlue("limelight").toString());
         Pose2d pose = LimelightHelpers.getBotPose2d_wpiBlue("limelight");
-        SmartDashboard.putString("Camera Results", "X: " + Drivetrain.getInstance().getPosition().getX() + " Y: " + Drivetrain.getInstance().getPosition().getY());
+        SmartDashboard.putString("Camera Results", "X: " + pose.getX() + " Y: " + pose.getY());
+        SmartDashboard.putString("Distance", "" + Units.metersToFeet(distanceFromGoal(pose)));
 //        Optional<EstimatedRobotPose> pose = getRobotPose();
 //        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Pose", estimatedRobotPose.estimatedPose.toString()));
 //        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Distance: ", "" + distanceFromGoal(estimatedRobotPose.estimatedPose.toPose2d())));
 //        pose.ifPresent(estimatedRobotPose -> SmartDashboard.putString("Closest point: ", getClosestScoringPoint(estimatedRobotPose).toString()));
-//        SmartDashboard.putString("Relative angle: ", "" + angleRelativeToGoal());
-//        SmartDashboard.putString("Score angle: ", angleToScore().toString());
-//        SmartDashboard.putString("Get to score: ", getToScoringPosition().toString());
+        SmartDashboard.putString("Relative angle: ", "" + (angleRelativeToGoal(pose) * (180 / Math.PI)));
+        SmartDashboard.putString("Score angle: ", angleToScore(pose).toString());
+        SmartDashboard.putString("Get to score: ", getToScoringPosition(pose).toString());
 
 
     }
@@ -52,11 +53,11 @@ public class Limelight extends SubsystemBase {
     public double distanceFromGoal(Pose2d pose){
         return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
             case Red -> {
-                Transform2d transRed = new Transform2d(Constants.Camera.field.getTagPose(7).get().toPose2d(), pose);
+                Transform2d transRed = new Transform2d(Constants.Camera.field.getTagPose(4).get().toPose2d(), pose);
                 yield Math.sqrt(Math.pow(transRed.getX(), 2) + Math.pow(transRed.getY(), 2));
             }
             case Blue -> {
-                Transform2d transBlue = new Transform2d(Constants.Camera.field.getTagPose(4).get().toPose2d(), pose);
+                Transform2d transBlue = new Transform2d(Constants.Camera.field.getTagPose(7).get().toPose2d(), pose);
                 yield Math.sqrt(Math.pow(transBlue.getX(), 2) + Math.pow(transBlue.getY(), 2));
             }
         };
@@ -89,18 +90,19 @@ public class Limelight extends SubsystemBase {
 
     /**
      * Returns angle relative to the goal regardless of what way the robot is facing
-     * @return The angle relative to the goal.
+     * @return The angle relative to the goal in positive radians from 0 to 2 PI.
      *
-     * In inches change to meters later
      **/
     public double angleRelativeToGoal(Pose2d pose) {
-        return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Red)) {
-            case Red -> Math.PI - Math.asin((pose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+        double angle = 0;
+        return switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
+            //Gives angle in positive radians
+            case Red -> ((2 * Math.PI) - Math.asin((pose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
                     Math.pow(pose.getY() - Units.inchesToMeters(218.42), 2) + Math.pow(pose.getX() - Units.inchesToMeters(652.73), 2)
-            ));
-            case Blue -> (2 * Math.PI) + Math.asin((pose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
+            ))) % (2 * Math.PI);
+            case Blue -> ((4 * Math.PI) + Math.asin((pose.getY() - Units.inchesToMeters(218.42)) / Math.sqrt(
                     Math.pow(pose.getY() - Units.inchesToMeters(218.42), 2) + Math.pow(pose.getX() + Units.inchesToMeters(1.5), 2)
-            ));
+            ))) % (2 * Math.PI);
         };
     }
 
@@ -108,15 +110,25 @@ public class Limelight extends SubsystemBase {
      * Returns the angle that the robot needs to be facing to be lined up with the goal
      */
     public Rotation2d angleToScore(Pose2d pose) {
+        double currentAngle = pose.getRotation().getRadians();
+        if (pose.getRotation().getRadians() < 0) {
+            currentAngle = pose.getRotation().getRadians() + (2 * Math.PI);
+        }
             switch (DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)) {
                 case Red -> {
-                    return new Rotation2d(pose.getRotation().getRadians() - (angleRelativeToGoal(pose) - Math.PI));
+                    if (((currentAngle - (angleRelativeToGoal(pose) - Math.PI)) % (2 * Math.PI) * -1) > Math.PI) {
+                        return new Rotation2d(((currentAngle - (angleRelativeToGoal(pose) + Math.PI)) % (2 * Math.PI) * -1) - (2 * Math.PI));
+                    }
+                    return new Rotation2d((currentAngle - (angleRelativeToGoal(pose) - Math.PI)) % (2 * Math.PI) * -1);
                 }
                 case Blue -> {
-                    return new Rotation2d(pose.getRotation().getRadians() - (angleRelativeToGoal(pose) + Math.PI));
+                    if (((currentAngle - (angleRelativeToGoal(pose) + Math.PI)) % (2 * Math.PI) * -1) > Math.PI) {
+                        return new Rotation2d(((currentAngle - (angleRelativeToGoal(pose) + Math.PI)) % (2 * Math.PI) * -1) - (2 * Math.PI));
+                    }
+                    return new Rotation2d((currentAngle - (angleRelativeToGoal(pose) + Math.PI)) % (2 * Math.PI) * -1);
                 }
             };
-        return null;
+        return new Rotation2d();
     }
 
     /**
@@ -129,14 +141,14 @@ public class Limelight extends SubsystemBase {
         if (distanceFromGoal(pose) <= Constants.scoringRange) {
             // Return Transform2d staying in same place and just rotating to line up with goal
             return new Transform2d(new Translation2d(), angleToScore(pose));
-        } else if (distanceFromGoal(Drivetrain.getInstance().getPosition()) <= Constants.cameraRange) {
+        } else if (distanceFromGoal(pose) <= Constants.cameraRange) {
             // Hopefully returns a Transform2d that tells robot where to go and how much to rotate by
             return new Transform2d(
-                    new Translation2d(Math.abs(getClosestScoringPoint(pose).getX() - pose.getX()),
-                            Math.abs(getClosestScoringPoint(pose).getY() - pose.getY())),
+                    new Translation2d(getClosestScoringPoint(pose).getX() - pose.getX(),
+                            getClosestScoringPoint(pose).getY() - pose.getY()),
                     angleToScore(pose)
             );
         }
-        return null;
+        return new Transform2d();
     }
 }

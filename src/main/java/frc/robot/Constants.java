@@ -183,7 +183,7 @@ public final class Constants {
 
     //both in meters
     public static final double scoringRange = 3.0;
-    public static final double cameraRange = 3.5;
+    public static final double cameraRange = 10.0;
 
 
 
